@@ -1,6 +1,8 @@
 import dynamic from 'next/dynamic'
 // Step 5 - delete Instructions components
 import Instructions from '@/components/dom/Instructions'
+import Header from '@/components/dom/Header'
+import DropDown from '@/components/dom/DropDown'
 
 // Dynamic import is used to prevent a payload when the website start that will include threejs r3f etc..
 // WARNING ! errors might get obfuscated by using dynamic import.
@@ -14,7 +16,11 @@ const Shader = dynamic(() => import('@/components/canvas/Shader/Shader'), {
 const DOM = () => {
   return (
     // Step 5 - delete Instructions components
-    <Instructions />
+    // <Instructions />
+    <>
+      <Header />
+      {/* <DropDown /> */}
+    </>
   )
 }
 

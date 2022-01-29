@@ -20,6 +20,8 @@
     "start": "next start"
   },
   "dependencies": {
+    "@headlessui/react": "^1.4.3",
+    "@heroicons/react": "^1.0.5",
     "@react-three/drei": "^7.19.3",
     "@react-three/fiber": "^7.0.17",
     "glsl-random": "^0.0.5",
