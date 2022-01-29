@@ -1,3 +1,4 @@
+import Header from '@/components/dom/Header'
 import Instructions from '@/components/dom/Instructions'
 import dynamic from 'next/dynamic'
 
@@ -8,7 +9,8 @@ const Box = dynamic(() => import('@/components/canvas/Box'), {
 const DOM = () => {
   return (
     // Step 5 - delete Instructions components
-    <Instructions />
+    // <Instructions />
+    <Header />
   )
 }
 
