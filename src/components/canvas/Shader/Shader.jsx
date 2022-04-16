@@ -3,9 +3,7 @@ import { useFrame, extend } from '@react-three/fiber'
 import { useRef, useState } from 'react'
 import useStore from '@/helpers/store'
 import { shaderMaterial } from '@react-three/drei'
-import guid from 'short-uuid'
 
-// @ts-ignore
 import vertex from './glsl/shader.vert'
 import fragment from './glsl/shader.frag'
 
@@ -20,7 +18,8 @@ const ColorShiftMaterial = shaderMaterial(
 
 // This is the 🔑 that HMR will renew if this file is edited
 // It works for THREE.ShaderMaterial as well as for drei/shaderMaterial
-ColorShiftMaterial.key = guid.generate()
+// @ts-ignore
+ColorShiftMaterial.key = THREE.MathUtils.generateUUID()
 
 extend({ ColorShiftMaterial })
 
