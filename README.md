@@ -1,85 +1,146 @@
-[![Downloads](https://img.shields.io/npm/dt/create-r3f-app.svg?style=flat&colorA=000000&colorB=000000)](https://www.npmjs.com/package/create-r3f-app) [![Discord Shield](https://img.shields.io/discord/740090768164651008?style=flat&colorA=000000&colorB=000000&label=discord&logo=discord&logoColor=ffffff)](https://discord.gg/ZZjjNvJ)
+# Dan Chang DJ - Professional DJ Website
 
-# :japanese_castle: React-Three-Next starter
+An immersive, interactive DJ website built with Next.js, React Three Fiber, and Framer Motion. Features a 3D interactive DJ controller that allows users to control audio parameters through mouse/touch gestures.
 
-A minimalist starter for NextJS, @react-three/fiber and Threejs.
+## 🎵 Features
 
-![](https://user-images.githubusercontent.com/2223602/192515435-a3d2c1bb-b79a-428e-92e5-f44c97a54bf7.jpg)
+### Interactive 3D DJ Controller
+- **Interactive Knobs**: Rotate knobs with mouse/touch to control bass and treble
+- **Interactive Faders**: Drag faders up/down to control volume
+- **Real-time Audio Control**: Adjust volume, bass, and treble parameters
+- **Visual Feedback**: LED indicators that light up based on control values
+- **Smooth Animations**: Spring-based animations for realistic interactions
 
-- TTL ~ 100ms
-- First load JS ~ 79kb
-- Lighthouse score of 100 (Performance, Accessibility, Best Practices, SEO)
+### Modern Website Design
+- **Responsive Layout**: Works perfectly on desktop, tablet, and mobile
+- **Smooth Scrolling**: Animated sections with scroll-triggered animations
+- **Glass Morphism**: Modern glass effect UI elements
+- **Gradient Text**: Eye-catching gradient text effects
+- **Professional Branding**: Focused on corporate party DJ services
 
-This starter allows you to navigate seamlessly between pages with dynamic dom and/or canvas content without reloading or creating a new canvas every time. 3D components are usable anywhere in the dom. The events, dom, viewport, everything is synchronized!
+### Audio Integration
+- **Background Music**: Play/pause functionality for background tracks
+- **Volume Control**: Real-time volume adjustment
+- **Audio Visualization**: Visual feedback for audio parameters
 
-### ⚫ Demo :
+## 🚀 Getting Started
 
-[![image](https://user-images.githubusercontent.com/15867665/231395343-fd4770e3-0e39-4f5c-ac30-71d823a9ef1c.png)](https://react-three-next.vercel.app/)
+### Prerequisites
+- Node.js 14 or higher
+- npm or yarn
 
-### How to use
+### Installation
 
-#### Installation
-
-_Tailwind is the default style. styled-components (styled) are also available._
-
-```sh
-yarn create r3f-app next my-app
-# yarn create r3f-app <next> my-app <tailwind|styled>? -ts?
-```
-
-### :passport_control: Typescript
-
-For typescript add the parameter `-ts` or `--typescript`:
-
-```sh
-yarn create r3f-app next my-app -ts
-```
-
-### :mount_fuji: Features
-
-- [x] GLSL imports
-- [x] Canvas is not getting unmounted while navigating between pages
-- [x] Canvas components usable in any div of the page
-- [x] Based on the App directory architecture
-- [x] PWA Support
-
-### :bullettrain_side: Architecture
-
-Thanks to [tunnel-rat](https://github.com/pmndrs/tunnel-rat) the starter can portal components between separate renderers. Anything rendered inside the `<View/>` component of the starter will be rendered in the 3D Context. For better performances it uses gl.scissor to cut the viewport into segments.
-
-```jsx
-<div className='relative'>
-  <View orbit className='relative sm:h-48 sm:w-full'>
-    <Dog scale={2} />
-    // Some 3D components will be rendered here
-  </View>
-</div>
-```
-
-### :control_knobs: Available Scripts
-
-- `yarn dev` - Next dev
-- `yarn analyze` - Generate bundle-analyzer
-- `yarn lint` - Audit code quality
-- `yarn build` - Next build
-- `yarn start` - Next start
-
-### ⬛ Stack
-
-- [`create-r3f-app`](https://github.com/utsuboco/create-r3f-app) &ndash; Command line tool to simplify the installation.
-- [`threejs`](https://github.com/mrdoob/three.js/) &ndash; A lightweight, 3D library with a default WebGL renderer.
-- [`@react-three/fiber`](https://github.com/pmndrs/react-three-fiber) &ndash; A React renderer for Threejs on the web and react-native.
-- [`@react-three/drei` - Optional](https://github.com/pmndrs/drei) &ndash; useful helpers for react-three-fiber
-- [`@react-three/a11y` - Optional](https://github.com/pmndrs/react-three-a11y/) &ndash; Accessibility tools for React Three Fiber
-- [`r3f-perf` - Optional](https://github.com/RenaudRohlinger/r3f-perf) &ndash; Tool to easily monitor react threejs performances.
-
-### How to contribute :
-
+1. Clone the repository:
 ```bash
-git clone https://github.com/pmndrs/react-three-next
-&& cd react-three-next && yarn install
+git clone <repository-url>
+cd dj-website
 ```
 
-### Maintainers :
+2. Install dependencies:
+```bash
+npm install
+```
 
-- [`twitter 🐈‍⬛ @onirenaud`](https://twitter.com/onirenaud)
+3. Add your background music:
+   - Place your MP3 file in `public/music/background-track.mp3`
+   - Recommended: Use royalty-free music or tracks by artists like Zedd, James Hype, or Jax Jones
+
+4. Start the development server:
+```bash
+npm run dev
+```
+
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## 🎛️ How to Use the 3D Controller
+
+### Mouse/Touch Controls
+- **Knobs**: Click and drag vertically to rotate the knob
+- **Faders**: Click and drag vertically to move the fader up/down
+- **Visual Feedback**: Watch the LED indicators light up as you adjust controls
+
+### Audio Controls
+- **Volume Slider**: Controls the overall audio volume
+- **Bass Knob**: Adjusts bass frequencies (visual feedback only)
+- **Treble Knob**: Adjusts treble frequencies (visual feedback only)
+
+## 📁 Project Structure
+
+```
+├── app/
+│   ├── page.jsx              # Main landing page
+│   ├── global.css            # Global styles and animations
+│   └── layout.jsx            # Root layout
+├── src/
+│   └── components/
+│       └── canvas/
+│           ├── DJController.jsx    # 3D interactive controller
+│           ├── View.jsx            # 3D view wrapper
+│           └── Scene.jsx           # 3D scene setup
+├── public/
+│   └── music/
+│       └── background-track.mp3    # Background music file
+└── package.json
+```
+
+## 🎨 Customization
+
+### Colors and Styling
+- Modify colors in `app/global.css`
+- Update gradient colors in the `.gradient-text` class
+- Adjust glass morphism effects in the `.glass` class
+
+### 3D Controller
+- Customize controller appearance in `src/components/canvas/DJController.jsx`
+- Adjust interaction sensitivity in the knob and fader components
+- Modify LED colors and positions
+
+### Content
+- Update text content in `app/page.jsx`
+- Modify package prices and descriptions
+- Update contact information
+
+## 🛠️ Technologies Used
+
+- **Next.js 13**: React framework with app router
+- **React Three Fiber**: 3D graphics library for React
+- **Three.js**: 3D graphics library
+- **Framer Motion**: Animation library
+- **React Spring**: Spring-based animations for 3D
+- **Tailwind CSS**: Utility-first CSS framework
+- **@react-three/drei**: Useful helpers for React Three Fiber
+
+## 📱 Browser Support
+
+- Chrome (recommended)
+- Firefox
+- Safari
+- Edge
+
+## 🎵 Audio Recommendations
+
+For the best experience, use high-quality MP3 files:
+- **Zedd**: "Clarity", "Stay", "The Middle"
+- **James Hype**: "More Than Friends", "Ferrari"
+- **Jax Jones**: "You Don't Know Me", "Instruction"
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## 📞 Contact
+
+For questions or support, contact Dan Chang at dan@danchangdj.com
+
+---
+
+**Note**: This website is designed for professional DJ services, specializing in corporate events, weddings, and private parties. The interactive 3D controller serves as both a demonstration of technical skills and an engaging way for potential clients to experience the DJ's capabilities.
