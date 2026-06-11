@@ -78,6 +78,16 @@ export default function Page() {
                   />
                 </motion.a>
               ))}
+              <motion.a
+                href="/dj"
+                className="text-purple-300 border border-purple-400 rounded-full px-4 py-1 hover:bg-purple-400/20 transition-colors"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                whileHover={{ scale: 1.1, transition: { duration: 0.2 } }}
+              >
+                🎧 DJ Booth
+              </motion.a>
             </div>
           </div>
         </div>
