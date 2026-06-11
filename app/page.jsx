@@ -1,824 +1,380 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { Suspense, useState, useEffect } from 'react'
-import { motion, useScroll, useTransform, useSpring, useInView } from 'framer-motion'
+import Link from 'next/link'
+import { useLayoutEffect, useRef } from 'react'
+import { gsap } from 'gsap/dist/gsap'
+import { ScrollTrigger } from 'gsap/dist/ScrollTrigger'
+import { scrollState } from '@/helpers/scrollState'
 
-const EnhancedDiscoBall = dynamic(() => import('@/components/canvas/DiscoBall').then((mod) => mod.EnhancedDiscoBall), { ssr: false })
-const View = dynamic(() => import('@/components/canvas/View').then((mod) => mod.View), {
-  ssr: false,
-  loading: () => (
-    <div className='flex h-96 w-full flex-col items-center justify-center'>
-      <svg className='-ml-1 mr-3 h-5 w-5 animate-spin text-black' fill='none' viewBox='0 0 24 24'>
-        <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4' />
-        <path
-          className='opacity-75'
-          fill='currentColor'
-          d='M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
-        />
-      </svg>
-    </div>
-  ),
-})
-const Common = dynamic(() => import('@/components/canvas/View').then((mod) => mod.Common), { ssr: false })
+const BallCanvas = dynamic(() => import('@/components/canvas/BallCanvas').then((mod) => mod.BallCanvas), { ssr: false })
+
+const STORY_STEPS = [
+  {
+    index: '01',
+    title: 'Listen first',
+    copy: 'Every event starts with a conversation, not a playlist. I learn the room, the crowd, and the moments that matter to you — long before a single track is queued.',
+  },
+  {
+    index: '02',
+    title: 'Design the night',
+    copy: 'From doors to last call, I map the energy of the evening: a soundtrack built around your timeline, your taste, and the people on your floor.',
+  },
+  {
+    index: '03',
+    title: 'Read the floor',
+    copy: 'On the night, I steer it live — seamless transitions, clean MC work, and the judgment that 10+ years behind the decks buys. The dance floor stays full.',
+  },
+]
+
+const PACKAGES = [
+  {
+    name: 'Basic',
+    price: '$1,000',
+    features: '4 hours · professional sound system · lighting · music consultation',
+    tag: null,
+  },
+  {
+    name: 'Premium',
+    price: '$1,500',
+    features: '6 hours · advanced lighting & effects · MC services · music consultation',
+    tag: 'Most booked',
+  },
+  {
+    name: 'Luxury',
+    price: '$2,000',
+    features: '8 hours · full lighting & laser show · MC services · photo booth setup',
+    tag: null,
+  },
+]
+
+const MARQUEE_ITEMS = ['Weddings', 'Corporate events', 'Private parties', 'Anniversaries', 'Galas']
 
 export default function Page() {
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [volume, setVolume] = useState(0.5)
-  const [audioElement, setAudioElement] = useState(null)
-  
-  // Scroll animations
-  const { scrollYProgress } = useScroll()
-  const y = useTransform(scrollYProgress, [0, 1], ['0%', '50%'])
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
-  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.8])
-  
-  // Spring animations for smooth effects
-  const springY = useSpring(y, { stiffness: 300, damping: 30 })
-  const springOpacity = useSpring(opacity, { stiffness: 300, damping: 30 })
-  const springScale = useSpring(scale, { stiffness: 300, damping: 30 })
+  const root = useRef(null)
+
+  useLayoutEffect(() => {
+    gsap.registerPlugin(ScrollTrigger)
+    // The site scrolls inside the layout's wrapper div, not the window. Pass
+    // the element itself: gsap.context would scope a selector string to this
+    // component's subtree, and the scroller lives above it.
+    const scrollerEl = document.getElementById('main-scroll')
+    if (scrollerEl) ScrollTrigger.defaults({ scroller: scrollerEl })
+
+    const mm = gsap.matchMedia()
+    const ctx = gsap.context(() => {
+      mm.add(
+        {
+          reduce: '(prefers-reduced-motion: reduce)',
+          full: '(prefers-reduced-motion: no-preference)',
+        },
+        (mmCtx) => {
+          if (mmCtx.conditions.reduce) {
+            // Reduced motion: everything visible, story steps stacked, no pin
+            gsap.set('[data-intro], [data-reveal], [data-row]', { autoAlpha: 1, y: 0 })
+            gsap.set('.line-mask > span', { yPercent: 0 })
+            gsap.set('[data-step]', { position: 'relative', autoAlpha: 1, y: 0 })
+            return
+          }
+
+          // ---- intro
+          gsap
+            .timeline({ defaults: { ease: 'power3.out' } })
+            .from('[data-nav]', { y: -20, autoAlpha: 0, duration: 0.7 }, 0.1)
+            .from('.line-mask > span', { yPercent: 112, duration: 1.05, stagger: 0.085, ease: 'power4.out' }, 0.25)
+            .from('[data-intro]', { y: 16, autoAlpha: 0, duration: 0.8, stagger: 0.09 }, 0.8)
+
+          // ---- nav backdrop after leaving the hero
+          gsap.to('[data-nav-bg]', {
+            autoAlpha: 1,
+            ease: 'none',
+            scrollTrigger: { trigger: '[data-hero]', start: 'bottom 90%', end: 'bottom 60%', scrub: true },
+          })
+
+          // ---- hero: gentle parallax out + progress for the 3D layer
+          gsap.to('[data-hero-inner]', {
+            yPercent: -10,
+            autoAlpha: 0.25,
+            ease: 'none',
+            scrollTrigger: { trigger: '[data-hero]', start: 'top top', end: 'bottom top', scrub: true },
+          })
+          ScrollTrigger.create({
+            trigger: '[data-hero]',
+            start: 'top top',
+            end: 'bottom top',
+            onUpdate: (self) => {
+              scrollState.hero = self.progress
+            },
+          })
+
+          // ---- pinned story: steps crossfade under a scrubbed timeline
+          const steps = gsap.utils.toArray('[data-step]')
+          const story = gsap.timeline({
+            scrollTrigger: {
+              trigger: '[data-story]',
+              start: 'top top',
+              end: '+=250%',
+              pin: true,
+              scrub: 0.7,
+              anticipatePin: 1,
+              onUpdate: (self) => {
+                scrollState.story = self.progress
+              },
+            },
+          })
+          steps.forEach((step, i) => {
+            if (i > 0) story.fromTo(step, { autoAlpha: 0, y: 56 }, { autoAlpha: 1, y: 0, duration: 0.4, ease: 'power2.out' }, i)
+            if (i < steps.length - 1) story.to(step, { autoAlpha: 0, y: -56, duration: 0.4, ease: 'power2.in' }, i + 0.6)
+          })
+          story.fromTo('[data-progress]', { scaleX: 0 }, { scaleX: 1, ease: 'none', duration: steps.length - 0.4 }, 0)
+
+          // ---- services + contact: row reveals and 3D progress
+          gsap.utils.toArray('[data-row]').forEach((row, i) => {
+            gsap.from(row, {
+              autoAlpha: 0,
+              y: 36,
+              duration: 0.8,
+              delay: i * 0.06,
+              ease: 'power3.out',
+              scrollTrigger: { trigger: row, start: 'top 90%' },
+            })
+          })
+          gsap.utils.toArray('[data-reveal]').forEach((el) => {
+            gsap.from(el, {
+              autoAlpha: 0,
+              y: 28,
+              duration: 0.9,
+              ease: 'power3.out',
+              scrollTrigger: { trigger: el, start: 'top 86%' },
+            })
+          })
+          ScrollTrigger.create({
+            trigger: '[data-services]',
+            start: 'top bottom',
+            end: 'top 25%',
+            onUpdate: (self) => {
+              scrollState.services = self.progress
+            },
+          })
+          ScrollTrigger.create({
+            trigger: '[data-contact]',
+            start: 'top bottom',
+            end: 'top 30%',
+            onUpdate: (self) => {
+              scrollState.contact = self.progress
+            },
+          })
+
+          // ---- marquee: slow, linear, unobtrusive
+          gsap.to('[data-marquee-track]', { xPercent: -50, ease: 'none', duration: 26, repeat: -1 })
+        }
+      )
+    }, root)
+
+    return () => {
+      ctx.revert()
+      mm.revert()
+    }
+  }, [])
 
   return (
-    <>
-      {/* Navigation */}
-      <motion.nav 
-        className="fixed top-0 w-full bg-black/80 backdrop-blur-sm z-50"
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.8, type: "spring" }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <motion.div 
-              className="text-white text-2xl font-bold gradient-text"
-              whileHover={{ scale: 1.05 }}
-              transition={{ duration: 0.2 }}
+    <div ref={root} className='bg-black text-white'>
+      {/* 3D layer — sits visually behind all z-10 content */}
+      <div className='pointer-events-none fixed inset-0'>
+        <BallCanvas />
+      </div>
+
+      <div className='grain' aria-hidden='true' />
+
+      {/* navigation */}
+      <header data-nav className='fixed inset-x-0 top-0 z-30'>
+        <div data-nav-bg className='absolute inset-0 bg-black/70 opacity-0 backdrop-blur-md' />
+        <nav className='relative mx-auto flex max-w-6xl items-center justify-between px-6 py-5'>
+          <a href='#top' className='text-sm font-bold tracking-widest'>
+            DAN CHANG
+          </a>
+          <div className='flex items-center gap-7'>
+            <a href='#story' className='u-link hidden text-sm text-gray-300 hover:text-white sm:block'>
+              Approach
+            </a>
+            <a href='#services' className='u-link hidden text-sm text-gray-300 hover:text-white sm:block'>
+              Packages
+            </a>
+            <a href='#contact' className='u-link hidden text-sm text-gray-300 hover:text-white sm:block'>
+              Contact
+            </a>
+            <Link
+              href='/dj'
+              className='rounded-full border border-purple-400/60 px-4 py-1.5 text-sm text-purple-200 transition-colors hover:border-purple-300 hover:bg-purple-400/10'
             >
-              Dan Chang
-            </motion.div>
-            <div className="hidden md:flex space-x-8">
-              {['Home', 'About', 'Packages', 'Contact'].map((item, index) => (
-                <motion.a
-                  key={item}
-                  href={`#${item.toLowerCase()}`}
-                  className="text-white hover:text-purple-400 transition-colors relative"
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  whileHover={{ 
-                    scale: 1.1,
-                    transition: { duration: 0.2 }
-                  }}
-                >
-                  {item}
-                  <motion.div
-                    className="absolute -bottom-1 left-0 w-0 h-0.5 bg-purple-400"
-                    whileHover={{ width: "100%" }}
-                    transition={{ duration: 0.3 }}
-                  />
-                </motion.a>
-              ))}
-              <motion.a
-                href="/dj"
-                className="text-purple-300 border border-purple-400 rounded-full px-4 py-1 hover:bg-purple-400/20 transition-colors"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                whileHover={{ scale: 1.1, transition: { duration: 0.2 } }}
-              >
-                🎧 DJ Booth
-              </motion.a>
-            </div>
+              DJ Booth ↗
+            </Link>
           </div>
-        </div>
-      </motion.nav>
+        </nav>
+      </header>
 
-      {/* Hero Section */}
-      <section id="home" className="min-h-screen bg-gradient-to-br from-purple-900 via-black to-blue-900 flex items-center justify-center relative overflow-hidden">
-        {/* Enhanced Animated Background Elements */}
-        <motion.div 
-          className="absolute inset-0 overflow-hidden"
-          style={{ y: springY, opacity: springOpacity, scale: springScale }}
-        >
-          {/* Floating orbs with complex animations */}
-          <motion.div 
-            className="absolute top-20 left-20 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20"
-            animate={{
-              scale: [1, 1.2, 1],
-              rotate: [0, 180, 360],
-              x: [0, 50, 0],
-              y: [0, -30, 0]
-            }}
-            transition={{
-              duration: 8,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          />
-          <motion.div 
-            className="absolute top-40 right-20 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20"
-            animate={{
-              scale: [1.2, 1, 1.2],
-              rotate: [360, 180, 0],
-              x: [0, -50, 0],
-              y: [0, 30, 0]
-            }}
-            transition={{
-              duration: 10,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 1
-            }}
-          />
-          <motion.div 
-            className="absolute bottom-20 left-1/2 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20"
-            animate={{
-              scale: [1, 1.3, 1],
-              rotate: [180, 360, 180],
-              x: [0, 30, 0],
-              y: [0, -50, 0]
-            }}
-            transition={{
-              duration: 12,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 2
-            }}
-          />
-          
-          {/* Additional floating elements */}
-          <motion.div 
-            className="absolute top-1/4 right-1/4 w-32 h-32 bg-yellow-400 rounded-full mix-blend-multiply filter blur-lg opacity-30"
-            animate={{
-              scale: [0.8, 1.2, 0.8],
-              rotate: [0, 90, 180, 270, 360],
-              x: [0, 20, 0, -20, 0],
-              y: [0, -20, 0, 20, 0]
-            }}
-            transition={{
-              duration: 6,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          />
-          
-          <motion.div 
-            className="absolute bottom-1/4 left-1/4 w-24 h-24 bg-cyan-400 rounded-full mix-blend-multiply filter blur-lg opacity-40"
-            animate={{
-              scale: [1.2, 0.8, 1.2],
-              rotate: [360, 270, 180, 90, 0],
-              x: [0, -30, 0, 30, 0],
-              y: [0, 30, 0, -30, 0]
-            }}
-            transition={{
-              duration: 7,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 1.5
-            }}
-          />
-        </motion.div>
-        {/* Background Music Player */}
-        <div className="absolute top-4 right-4 z-10">
-          <audio 
-            ref={setAudioElement}
-            loop 
-            preload="auto"
-            onLoadedData={() => console.log('Audio loaded')}
-            onError={(e) => console.log('Audio error:', e)}
-          >
-            <source src="/music/background-track.mp3" type="audio/mpeg" />
-            Your browser does not support the audio element.
-          </audio>
-          <button
-            onClick={() => {
-              if (audioElement) {
-                if (isPlaying) {
-                  audioElement.pause()
-                } else {
-                  audioElement.play().catch(e => console.log('Play failed:', e))
-                }
-                setIsPlaying(!isPlaying)
-              }
-            }}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-full flex items-center space-x-2 transition-colors glass"
-          >
-            <span>{isPlaying ? '⏸️' : '▶️'}</span>
-            <span>{isPlaying ? 'Pause' : 'Play'} Music</span>
-          </button>
-        </div>
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Text Content */}
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8 }}
-              className="text-white"
-            >
-              <motion.h1 
-                className="text-6xl lg:text-7xl font-bold mb-6"
-                animate={{ 
-                  textShadow: [
-                    "0 0 20px rgba(99, 102, 241, 0.5)",
-                    "0 0 40px rgba(99, 102, 241, 0.8)",
-                    "0 0 20px rgba(99, 102, 241, 0.5)"
-                  ]
-                }}
-                transition={{ duration: 3, repeat: Infinity }}
-              >
-                <motion.span 
-                  className="gradient-text"
-                  animate={{ 
-                    backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"]
-                  }}
-                  transition={{ duration: 5, repeat: Infinity }}
+      <main id='top' className='relative z-10'>
+        {/* ---- hero */}
+        <section data-hero className='flex min-h-screen flex-col justify-end px-6 pb-16 pt-32'>
+          <div data-hero-inner className='mx-auto w-full max-w-6xl'>
+            <p data-intro className='eyebrow mb-6'>
+              Dan Chang — DJ &amp; MC · Serving the greater metropolitan area
+            </p>
+            <h1 className='display text-[clamp(2.8rem,8.5vw,7.5rem)]'>
+              <span className='line-mask'>
+                <span>EVERY</span>
+              </span>
+              <span className='line-mask'>
+                <span>GREAT NIGHT</span>
+              </span>
+              <span className='line-mask'>
+                <span>
+                  HAS A <span className='text-purple-400'>SOUNDTRACK.</span>
+                </span>
+              </span>
+            </h1>
+            <div className='mt-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between'>
+              <p data-intro className='max-w-md text-base leading-relaxed text-gray-400'>
+                Ten-plus years of corporate events, weddings and private parties — planned with care, mixed live, and
+                carried by a floor that never empties.
+              </p>
+              <div data-intro className='flex items-center gap-4'>
+                <a
+                  href='#contact'
+                  className='rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition-transform duration-300 hover:scale-[1.03]'
                 >
-                  Dan Chang
-                </motion.span>
-                <br />
-                <motion.span 
-                  className="text-4xl lg:text-5xl text-white"
-                  animate={{ opacity: [0.8, 1, 0.8] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  Professional DJ
-                </motion.span>
-              </motion.h1>
-              <motion.p 
-                className="text-xl lg:text-2xl mb-8 text-gray-300"
-                animate={{ x: [0, 5, 0] }}
-                transition={{ duration: 4, repeat: Infinity }}
-              >
-                Creating unforgettable experiences for over 10 years
-              </motion.p>
-              <motion.p 
-                className="text-lg mb-8 text-gray-400"
-                animate={{ opacity: [0.7, 1, 0.7] }}
-                transition={{ duration: 3, repeat: Infinity }}
-              >
-                Specializing in corporate events, weddings, and private parties. 
-                Let me bring the perfect vibe to your next celebration.
-              </motion.p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <motion.button 
-                  className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-full text-lg font-semibold transition-colors hover-lift"
-                  whileHover={{ 
-                    scale: 1.05,
-                    boxShadow: "0 10px 30px rgba(99, 102, 241, 0.4)"
-                  }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Book Now
-                </motion.button>
-                <motion.button 
-                  className="border-2 border-purple-400 text-purple-400 hover:bg-purple-400 hover:text-white px-8 py-3 rounded-full text-lg font-semibold transition-colors hover-lift"
-                  whileHover={{ 
-                    scale: 1.05,
-                    boxShadow: "0 10px 30px rgba(99, 102, 241, 0.4)"
-                  }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  View Packages
-                </motion.button>
+                  Plan your event
+                </a>
+                <a href='#story' className='u-link text-sm text-gray-300'>
+                  How I work
+                </a>
               </div>
-            </motion.div>
-
-            {/* 3D Disco Ball */}
-            <motion.div
-              initial={{ opacity: 0, x: 50, scale: 0.5 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              transition={{ 
-                duration: 1.2, 
-                delay: 0.2,
-                type: "spring",
-                stiffness: 100,
-                damping: 15
-              }}
-              className="h-96 lg:h-[500px]"
-            >
-              <View className='flex h-full w-full flex-col items-center justify-center'>
-                <Suspense fallback={null}>
-                  <EnhancedDiscoBall />
-                  <Common />
-                </Suspense>
-              </View>
-            </motion.div>
+            </div>
+            <div data-intro className='mt-14 flex items-center gap-3 text-gray-500'>
+              <span className='block h-px w-10 bg-gray-600' />
+              <span className='text-xs tracking-widest'>SCROLL</span>
+            </div>
           </div>
-        </div>
+        </section>
 
-        {/* Audio Controls */}
-        <motion.div 
-          className="absolute bottom-8 left-8 glass p-4 rounded-lg"
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 1 }}
-        >
-          <div className="text-white space-y-3">
+        {/* ---- pinned story */}
+        <section id='story' data-story className='relative flex h-screen items-center px-6'>
+          <div className='mx-auto w-full max-w-6xl'>
+            <p className='eyebrow mb-10' data-reveal>
+              The approach
+            </p>
+            <div className='relative min-h-[22rem] sm:min-h-[20rem]'>
+              {STORY_STEPS.map((step, i) => (
+                <article
+                  key={step.index}
+                  data-step
+                  className='absolute inset-0 grid content-start gap-6 sm:grid-cols-[1fr_2fr] sm:gap-12'
+                  style={{ opacity: i === 0 ? 1 : 0 }}
+                >
+                  <div className='display text-[clamp(4rem,9vw,8rem)] text-white/15'>{step.index}</div>
+                  <div className='max-w-xl'>
+                    <h2 className='display mb-5 text-[clamp(2rem,4.4vw,3.6rem)]'>{step.title}</h2>
+                    <p className='text-lg leading-relaxed text-gray-400'>{step.copy}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <div className='mt-12 h-px w-full bg-white/10'>
+              <div data-progress className='h-px origin-left bg-purple-400' style={{ transform: 'scaleX(0)' }} />
+            </div>
+          </div>
+        </section>
+
+        {/* ---- services */}
+        <section id='services' data-services className='px-6 py-32'>
+          <div className='mx-auto w-full max-w-6xl'>
+            <p className='eyebrow mb-4' data-reveal>
+              Packages
+            </p>
+            <h2 className='display mb-16 text-[clamp(2.2rem,5vw,4rem)]' data-reveal>
+              Built around your event.
+            </h2>
             <div>
-              <label className="block text-sm mb-1 font-semibold">Volume</label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={volume}
-                onChange={(e) => {
-                  const newVolume = parseFloat(e.target.value)
-                  setVolume(newVolume)
-                  if (audioElement) {
-                    audioElement.volume = newVolume
-                  }
-                }}
-                className="w-32"
-              />
-            </div>
-          </div>
-        </motion.div>
-      </section>
-
-      {/* About Section */}
-      <section id="about" className="py-20 bg-gray-900 relative overflow-hidden">
-        {/* Animated background particles */}
-        <div className="absolute inset-0 overflow-hidden">
-          {Array.from({ length: 20 }).map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute w-2 h-2 bg-purple-400 rounded-full opacity-30"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-              }}
-              animate={{
-                y: [0, -100, 0],
-                opacity: [0.3, 0.8, 0.3],
-                scale: [1, 1.5, 1],
-              }}
-              transition={{
-                duration: 3 + Math.random() * 2,
-                repeat: Infinity,
-                delay: Math.random() * 2,
-              }}
-            />
-          ))}
-        </div>
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            className="text-center"
-          >
-            <h2 className="text-5xl font-bold text-white mb-8 gradient-text">About Dan Chang</h2>
-            <p className="text-xl text-gray-300 max-w-4xl mx-auto mb-12">
-              With over a decade of experience in the DJ industry, I've had the privilege of entertaining at hundreds of corporate events, 
-              weddings, and private parties. My passion for music and commitment to creating the perfect atmosphere has made me a trusted 
-              choice for clients who demand excellence.
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
-              <motion.div
-                initial={{ opacity: 0, y: 30, rotateY: -15 }}
-                whileInView={{ opacity: 1, y: 0, rotateY: 0 }}
-                transition={{ duration: 0.8, delay: 0.2, type: "spring" }}
-                viewport={{ once: true }}
-                className="glass p-6 rounded-lg hover-lift"
-                whileHover={{ 
-                  scale: 1.05, 
-                  rotateY: 5,
-                  transition: { duration: 0.3 }
-                }}
-              >
-                <motion.div 
-                  className="text-4xl mb-4"
-                  animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  🎵
-                </motion.div>
-                <h3 className="text-2xl font-bold text-white mb-3">Music Expertise</h3>
-                <p className="text-gray-300">Versatile music selection spanning multiple genres and decades to keep any crowd engaged.</p>
-              </motion.div>
-              
-              <motion.div
-                initial={{ opacity: 0, y: 30, rotateY: -15 }}
-                whileInView={{ opacity: 1, y: 0, rotateY: 0 }}
-                transition={{ duration: 0.8, delay: 0.4, type: "spring" }}
-                viewport={{ once: true }}
-                className="glass p-6 rounded-lg hover-lift"
-                whileHover={{ 
-                  scale: 1.05, 
-                  rotateY: 5,
-                  transition: { duration: 0.3 }
-                }}
-              >
-                <motion.div 
-                  className="text-4xl mb-4"
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                >
-                  🎉
-                </motion.div>
-                <h3 className="text-2xl font-bold text-white mb-3">Event Mastery</h3>
-                <p className="text-gray-300">Professional equipment and seamless transitions to ensure your event flows perfectly.</p>
-              </motion.div>
-              
-              <motion.div
-                initial={{ opacity: 0, y: 30, rotateY: -15 }}
-                whileInView={{ opacity: 1, y: 0, rotateY: 0 }}
-                transition={{ duration: 0.8, delay: 0.6, type: "spring" }}
-                viewport={{ once: true }}
-                className="glass p-6 rounded-lg hover-lift"
-                whileHover={{ 
-                  scale: 1.05, 
-                  rotateY: 5,
-                  transition: { duration: 0.3 }
-                }}
-              >
-                <motion.div 
-                  className="text-4xl mb-4"
-                  animate={{ rotate: [0, 360] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                >
-                  ⭐
-                </motion.div>
-                <h3 className="text-2xl font-bold text-white mb-3">10+ Years Experience</h3>
-                <p className="text-gray-300">Over a decade of experience in creating unforgettable moments and lasting memories.</p>
-              </motion.div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Packages Section */}
-      <section id="packages" className="py-20 bg-black relative overflow-hidden">
-        {/* Animated disco lights background */}
-        <div className="absolute inset-0 overflow-hidden">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute w-1 h-1 bg-white rounded-full"
-              style={{
-                left: `${(i * 12.5) + Math.random() * 10}%`,
-                top: `${Math.random() * 100}%`,
-              }}
-              animate={{
-                y: [0, -200, 0],
-                opacity: [0, 1, 0],
-                scale: [0, 2, 0],
-              }}
-              transition={{
-                duration: 4,
-                repeat: Infinity,
-                delay: i * 0.5,
-              }}
-            />
-          ))}
-        </div>
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            className="text-center"
-          >
-            <h2 className="text-5xl font-bold text-white mb-8 gradient-text">DJ Packages</h2>
-            <p className="text-xl text-gray-300 mb-12">
-              Choose the perfect package for your event
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
-              <motion.div
-                initial={{ opacity: 0, y: 30, scale: 0.8 }}
-                whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.8, delay: 0.2, type: "spring" }}
-                viewport={{ once: true }}
-                className="glass p-8 rounded-lg hover-lift relative"
-                whileHover={{ 
-                  scale: 1.05, 
-                  y: -10,
-                  transition: { duration: 0.3 }
-                }}
-              >
-                <motion.div
-                  className="absolute -top-2 -right-2 w-4 h-4 bg-purple-400 rounded-full"
-                  animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                />
-                <h3 className="text-3xl font-bold text-white mb-4">Basic Package</h3>
-                <motion.div 
-                  className="text-4xl font-bold text-purple-400 mb-6"
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  $1000
-                </motion.div>
-                <ul className="text-gray-300 space-y-3 mb-8">
-                  <li>• 4 hours of DJ service</li>
-                  <li>• Professional sound system</li>
-                  <li>• Basic lighting setup</li>
-                  <li>• Music consultation</li>
-                </ul>
-                <motion.button 
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-semibold transition-colors"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Book Now
-                </motion.button>
-              </motion.div>
-              
-              <motion.div
-                initial={{ opacity: 0, y: 30, scale: 0.8 }}
-                whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.8, delay: 0.4, type: "spring" }}
-                viewport={{ once: true }}
-                className="glass p-8 rounded-lg hover-lift border-2 border-purple-400 relative"
-                whileHover={{ 
-                  scale: 1.05, 
-                  y: -10,
-                  transition: { duration: 0.3 }
-                }}
-              >
-                <motion.div 
-                  className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-purple-400 text-black px-4 py-1 rounded-full text-sm font-bold"
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                >
-                  Most Popular
-                </motion.div>
-                <motion.div
-                  className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full"
-                  animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
-                  transition={{ duration: 1.5, repeat: Infinity, delay: 0.5 }}
-                />
-                <h3 className="text-3xl font-bold text-white mb-4">Premium Package</h3>
-                <motion.div 
-                  className="text-4xl font-bold text-purple-400 mb-6"
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ duration: 2, repeat: Infinity, delay: 0.2 }}
-                >
-                  $1500
-                </motion.div>
-                <ul className="text-gray-300 space-y-3 mb-8">
-                  <li>• 6 hours of DJ service</li>
-                  <li>• Professional sound system</li>
-                  <li>• Advanced lighting & effects</li>
-                  <li>• Music consultation</li>
-                  <li>• MC services included</li>
-                </ul>
-                <motion.button 
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-semibold transition-colors"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Book Now
-                </motion.button>
-              </motion.div>
-              
-              <motion.div
-                initial={{ opacity: 0, y: 30, scale: 0.8 }}
-                whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.8, delay: 0.6, type: "spring" }}
-                viewport={{ once: true }}
-                className="glass p-8 rounded-lg hover-lift relative"
-                whileHover={{ 
-                  scale: 1.05, 
-                  y: -10,
-                  transition: { duration: 0.3 }
-                }}
-              >
-                <motion.div
-                  className="absolute -top-2 -right-2 w-4 h-4 bg-pink-400 rounded-full"
-                  animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
-                  transition={{ duration: 1.8, repeat: Infinity, delay: 1 }}
-                />
-                <h3 className="text-3xl font-bold text-white mb-4">Luxury Package</h3>
-                <motion.div 
-                  className="text-4xl font-bold text-purple-400 mb-6"
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ duration: 2, repeat: Infinity, delay: 0.4 }}
-                >
-                  $2000
-                </motion.div>
-                <ul className="text-gray-300 space-y-3 mb-8">
-                  <li>• 8 hours of DJ service</li>
-                  <li>• Premium sound system</li>
-                  <li>• Full lighting & laser show</li>
-                  <li>• Music consultation</li>
-                  <li>• MC services included</li>
-                  <li>• Photo booth setup</li>
-                </ul>
-                <motion.button 
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-semibold transition-colors"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Book Now
-                </motion.button>
-              </motion.div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Contact Section */}
-      <section id="contact" className="py-20 bg-gray-900 relative overflow-hidden">
-        {/* Floating contact icons */}
-        <div className="absolute inset-0 overflow-hidden">
-          {Array.from({ length: 15 }).map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute text-2xl opacity-20"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-              }}
-              animate={{
-                y: [0, -50, 0],
-                rotate: [0, 360],
-                opacity: [0.2, 0.5, 0.2],
-              }}
-              transition={{
-                duration: 5 + Math.random() * 3,
-                repeat: Infinity,
-                delay: Math.random() * 2,
-              }}
-            >
-              {['📧', '📱', '📍', '💬', '🎵'][i % 5]}
-            </motion.div>
-          ))}
-        </div>
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            className="text-center"
-          >
-            <h2 className="text-5xl font-bold text-white mb-8 gradient-text">Get In Touch</h2>
-            <p className="text-xl text-gray-300 mb-12">
-              Ready to make your event unforgettable? Let's talk!
-            </p>
-            
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mt-16">
-              <motion.div
-                initial={{ opacity: 0, x: -50, rotateY: -15 }}
-                whileInView={{ opacity: 1, x: 0, rotateY: 0 }}
-                transition={{ duration: 0.8, delay: 0.2, type: "spring" }}
-                viewport={{ once: true }}
-                className="glass p-8 rounded-lg"
-                whileHover={{ 
-                  scale: 1.02, 
-                  rotateY: 5,
-                  transition: { duration: 0.3 }
-                }}
-              >
-                <h3 className="text-2xl font-bold text-white mb-6">Contact Information</h3>
-                <div className="space-y-4 text-left">
-                  <motion.div 
-                    className="flex items-center space-x-4"
-                    whileHover={{ x: 10 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <motion.div 
-                      className="text-2xl"
-                      animate={{ rotate: [0, 10, -10, 0] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    >
-                      📧
-                    </motion.div>
-                    <div>
-                      <div className="font-semibold text-white">Email</div>
-                      <div className="text-gray-300">dmagma@hotmail.com</div>
+              {PACKAGES.map((pkg, i) => (
+                <div key={pkg.name} data-row className='service-row grid gap-2 py-8 sm:grid-cols-[3rem_1fr_auto] sm:items-baseline sm:gap-8'>
+                  <span className='text-sm text-gray-500'>0{i + 1}</span>
+                  <div>
+                    <div className='flex items-baseline gap-4'>
+                      <h3 className='display text-3xl sm:text-4xl'>{pkg.name}</h3>
+                      {pkg.tag && (
+                        <span className='rounded-full border border-purple-400/50 px-3 py-0.5 text-xs text-purple-300'>
+                          {pkg.tag}
+                        </span>
+                      )}
                     </div>
-                  </motion.div>
-                  <motion.div 
-                    className="flex items-center space-x-4"
-                    whileHover={{ x: 10 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <motion.div 
-                      className="text-2xl"
-                      animate={{ scale: [1, 1.2, 1] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                    >
-                      📱
-                    </motion.div>
-                    <div>
-                      <div className="font-semibold text-white">Phone</div>
-                      <div className="text-gray-300">604-725-7754</div>
-                    </div>
-                  </motion.div>
-                  <motion.div 
-                    className="flex items-center space-x-4"
-                    whileHover={{ x: 10 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <motion.div 
-                      className="text-2xl"
-                      animate={{ y: [0, -5, 0] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    >
-                      📍
-                    </motion.div>
-                    <div>
-                      <div className="font-semibold text-white">Location</div>
-                      <div className="text-gray-300">Serving the greater metropolitan area</div>
-                    </div>
-                  </motion.div>
+                    <p className='mt-2 text-sm text-gray-400'>{pkg.features}</p>
+                  </div>
+                  <div className='display text-2xl text-gray-200 sm:text-3xl'>{pkg.price}</div>
                 </div>
-              </motion.div>
-              
-              <motion.div
-                initial={{ opacity: 0, x: 50, rotateY: 15 }}
-                whileInView={{ opacity: 1, x: 0, rotateY: 0 }}
-                transition={{ duration: 0.8, delay: 0.4, type: "spring" }}
-                viewport={{ once: true }}
-                className="glass p-8 rounded-lg"
-                whileHover={{ 
-                  scale: 1.02, 
-                  rotateY: -5,
-                  transition: { duration: 0.3 }
-                }}
-              >
-                <h3 className="text-2xl font-bold text-white mb-6">Quick Contact Form</h3>
-                <form className="space-y-4">
-                  <motion.input
-                    type="text"
-                    placeholder="Your Name"
-                    className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-400"
-                    whileFocus={{ scale: 1.02 }}
-                    transition={{ duration: 0.2 }}
-                  />
-                  <motion.input
-                    type="email"
-                    placeholder="Your Email"
-                    className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-400"
-                    whileFocus={{ scale: 1.02 }}
-                    transition={{ duration: 0.2 }}
-                  />
-                  <motion.textarea
-                    placeholder="Tell us about your event"
-                    rows="4"
-                    className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-400"
-                    whileFocus={{ scale: 1.02 }}
-                    transition={{ duration: 0.2 }}
-                  />
-                  <motion.button
-                    type="submit"
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-semibold transition-colors hover-lift"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Send Message
-                  </motion.button>
-                </form>
-              </motion.div>
+              ))}
             </div>
-          </motion.div>
-        </div>
-      </section>
+            <p className='mt-10 text-sm text-gray-500' data-reveal>
+              Every booking includes a planning call, a shared request list, and full setup &amp; teardown.
+            </p>
+          </div>
+        </section>
 
-      {/* Footer */}
-      <footer className="bg-black py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-white mb-4">Dan Chang</div>
-            <p className="text-gray-400 mb-6">Professional DJ Services</p>
-            <div className="flex justify-center space-x-6 mb-6">
-              <a href="#" className="text-gray-400 hover:text-purple-400 transition-colors">
-                <span className="sr-only">Facebook</span>
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
-              </a>
-              <a href="#" className="text-gray-400 hover:text-purple-400 transition-colors">
-                <span className="sr-only">Instagram</span>
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.62 5.367 11.987 11.988 11.987 6.62 0 11.987-5.367 11.987-11.987C24.014 5.367 18.637.001 12.017.001zM8.449 16.988c-1.297 0-2.448-.49-3.323-1.297C4.198 14.895 3.708 13.744 3.708 12.447s.49-2.448 1.418-3.323c.875-.807 2.026-1.297 3.323-1.297s2.448.49 3.323 1.297c.928.875 1.418 2.026 1.418 3.323s-.49 2.448-1.418 3.244c-.875.807-2.026 1.297-3.323 1.297zm7.83-9.781c-.49 0-.928-.175-1.297-.49-.368-.315-.49-.753-.49-1.243 0-.49.122-.928.49-1.243.369-.315.807-.49 1.297-.49s.928.175 1.297.49c.368.315.49.753.49 1.243 0 .49-.122.928-.49 1.243-.369.315-.807.49-1.297.49z"/>
-                </svg>
-              </a>
-              <a href="#" className="text-gray-400 hover:text-purple-400 transition-colors">
-                <span className="sr-only">YouTube</span>
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                </svg>
-              </a>
+        {/* ---- marquee */}
+        <section className='overflow-hidden border-y border-white/10 py-6' aria-hidden='true'>
+          <div data-marquee-track className='flex w-max whitespace-nowrap'>
+            {[0, 1].map((dup) => (
+              <div key={dup} className='flex'>
+                {MARQUEE_ITEMS.map((item) => (
+                  <span key={`${dup}-${item}`} className='display mx-8 text-2xl text-white/25'>
+                    {item} <span className='mx-8 text-purple-400/40'>·</span>
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ---- contact */}
+        <section id='contact' data-contact className='px-6 pb-16 pt-36'>
+          <div className='mx-auto w-full max-w-6xl'>
+            <p className='eyebrow mb-6' data-reveal>
+              Booking
+            </p>
+            <h2 className='display text-[clamp(3rem,9vw,7.5rem)]' data-reveal>
+              LET&apos;S TALK.
+            </h2>
+            <div className='mt-12 grid gap-10 sm:grid-cols-2' data-reveal>
+              <div className='space-y-4'>
+                <a href='mailto:dmagma@hotmail.com' className='u-link block w-fit text-xl text-gray-200 sm:text-2xl'>
+                  dmagma@hotmail.com
+                </a>
+                <a href='tel:604-725-7754' className='u-link block w-fit text-xl text-gray-200 sm:text-2xl'>
+                  604-725-7754
+                </a>
+                <p className='pt-2 text-sm text-gray-500'>Serving the greater metropolitan area</p>
+              </div>
+              <div className='flex flex-col items-start gap-3 sm:items-end'>
+                <a href='#' className='u-link text-sm text-gray-400'>
+                  Instagram
+                </a>
+                <a href='#' className='u-link text-sm text-gray-400'>
+                  Facebook
+                </a>
+                <a href='#' className='u-link text-sm text-gray-400'>
+                  YouTube
+                </a>
+                <Link href='/dj' className='u-link pt-3 text-sm text-purple-300'>
+                  Try the virtual DJ booth ↗
+                </Link>
+              </div>
             </div>
-            <div className="border-t border-gray-800 pt-6">
-              <p className="text-gray-400">&copy; 2024 Dan Chang DJ. All rights reserved.</p>
+            <div className='mt-24 flex flex-col gap-2 border-t border-white/10 pt-6 text-xs text-gray-600 sm:flex-row sm:justify-between'>
+              <span>© 2026 Dan Chang. All rights reserved.</span>
+              <span>DJ &amp; MC services — corporate · weddings · private</span>
             </div>
           </div>
-        </div>
-      </footer>
-    </>
+        </section>
+      </main>
+    </div>
   )
 }
